@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic get_next_line Simulator</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --card-bg: #2d2d2d;
+            --text-main: #d4d4d4;
+            --accent: #007acc;
+            --file-color: #c586c0;
+            --buf-color: #ce9178;
+            --stash-color: #4fc1ff;
+            --line-color: #4ec9b0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        /* --- INPUT PANEL STYLES --- */
+        .input-panel {
+            background-color: #252526;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .input-row {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        label {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        textarea, input[type="number"] {
+            background-color: #1e1e1e;
+            color: white;
+            border: 1px solid #444;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: "Consolas", monospace;
+            font-size: 16px;
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        .btn-generate {
+            background-color: #28a745;
+            padding: 15px;
+            font-size: 18px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-generate:hover { background-color: #218838; }
+
+        /* --- VISUALIZER STYLES --- */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:disabled { background-color: #555; cursor: not-allowed; }
+        button:hover:not(:disabled) { background-color: #005f9e; }
+        
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border-left: 5px solid transparent;
+        }
+        .card h3 {
+            margin-top: 0;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+        .card.file { border-color: var(--file-color); }
+        .card.buffer { border-color: var(--buf-color); }
+        .card.stash { border-color: var(--stash-color); }
+        .card.line { border-color: var(--line-color); }
+        
+        .memory-block {
+            font-family: "Consolas", "Courier New", monospace;
+            background-color: #111;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 18px;
+            word-break: break-all;
+            min-height: 25px;
+            white-space: pre-wrap;
+        }
+        .spec-char { color: #d7ba7d; font-weight: bold; }
+        .null-char { color: #f44336; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Dynamic get_next_line Simulator</h1>
+    </div>
+
+    <!-- INPUT PANEL -->
+    <div class="input-panel">
+        <div class="input-row">
+            <div class="input-group" style="flex: 3;">
+                <label>Fake File Content (Type your test text here):</label>
+                <textarea id="userInput">Hello
+World
+
+42</textarea>
+            </div>
+            <div class="input-group" style="flex: 1;">
+                <label>BUFFER_SIZE:</label>
+                <input type="number" id="bufferSize" value="5" min="1" max="1000">
+            </div>
+        </div>
+        <button class="btn-generate" onclick="startSimulation()">⚙️ Generate Simulation</button>
+    </div>
+
+    <!-- VISUALIZER PANEL -->
+    <div id="visualizer" style="display: none;">
+        <div class="header">
+            <h2 id="step-title" style="color: var(--accent);">Step Title</h2>
+            <p id="step-desc" style="font-size: 18px; color: #aaa;">Step description goes here.</p>
+        </div>
+
+        <div class="controls">
+            <button id="btn-prev" onclick="changeStep(-1)">◀ Previous Step</button>
+            <span id="step-counter" style="align-self: center; font-weight: bold; color: #888;">0 / 0</span>
+            <button id="btn-next" onclick="changeStep(1)">Next Step ▶</button>
+        </div>
+
+        <div class="memory-grid">
+            <div class="card file">
+                <h3>Hard Drive (File Remaining)</h3>
+                <div class="memory-block" id="val-file"></div>
+            </div>
+            <div class="card buffer">
+                <h3>Heap (buf)</h3>
+                <div class="memory-block" id="val-buffer"></div>
+            </div>
+            <div class="card stash">
+                <h3>Static Variable (stash)</h3>
+                <div class="memory-block" id="val-stash"></div>
+            </div>
+            <div class="card line">
+                <h3>Returned Output (line)</h3>
+                <div class="memory-block" id="val-line"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let steps = [];
+    let currentStep = 0;
+
+    // This JavaScript function perfectly simulates your C logic!
+    function generateGNLSteps(text, bufferSize) {
+        let simSteps = [];
+        let stash = null;
+        let pos = 0;
+        let callCount = 1;
+
+        const fmt = (s) => s === null ? "NULL" : s + "\\0";
+        const getFile = () => pos >= text.length ? "EMPTY (EOF)" : text.substring(pos);
+
+        simSteps.push({
+            title: "Setup Ready", desc: `Simulation loaded with BUFFER_SIZE = ${bufferSize}.`,
+            file: getFile(), buffer: "NULL", stash: fmt(stash), line: "NULL"
+        });
+
+        // Loop until file is empty AND stash is empty
+        while (pos < text.length || stash !== null) {
+            simSteps.push({
+                title: `Call ${callCount}: get_next_line(fd)`, desc: "Function starts. Checking static stash.",
+                file: getFile(), buffer: "NULL", stash: fmt(stash), line: "NULL"
+            });
+
+            let bytesRead = 1;
+
+            // read_to_stash logic
+            while (!(stash !== null && stash.includes('\n')) && bytesRead !== 0) {
+                if (pos >= text.length) {
+                    bytesRead = 0;
+                    simSteps.push({
+                        title: `read_to_stash() - EOF`, desc: "File is empty. read() returns 0. Loop breaks.",
+                        file: "EMPTY (EOF)", buffer: "NULL", stash: fmt(stash), line: "NULL"
+                    });
+                    break;
+                }
+
+                let chunk = text.substring(pos, pos + bufferSize);
+                pos += chunk.length;
+
+                simSteps.push({
+                    title: `read() loop`, desc: `Read ${chunk.length} bytes into buffer.`,
+                    file: getFile(), buffer: fmt(chunk), stash: fmt(stash), line: "NULL"
+                });
+
+                stash = (stash === null ? "" : stash) + chunk;
+
+                simSteps.push({
+                    title: `ft_strjoin_and_free()`, desc: `Glued buffer to stash.`,
+                    file: getFile(), buffer: "Freed", stash: fmt(stash), line: "NULL"
+                });
+            }
+
+            // Extract logic
+            let line = null;
+            if (stash !== null) {
+                let nlIdx = stash.indexOf('\n');
+                if (nlIdx !== -1) {
+                    line = stash.substring(0, nlIdx + 1);
+                    let leftover = stash.substring(nlIdx + 1);
+                    stash = leftover === "" ? null : leftover;
+
+                    simSteps.push({
+                        title: `ft_strdup_modified()`, desc: `Found \\n! Sliced the line out.`,
+                        file: getFile(), buffer: "Freed", stash: fmt(stash ? stash + " (Wait for cleanup)" : "NULL"), line: fmt(line)
+                    });
+                    simSteps.push({
+                        title: `clean_stash()`, desc: `Saved leftovers back to static stash. Line is returned!`,
+                        file: getFile(), buffer: "Freed", stash: fmt(stash), line: fmt(line)
+                    });
+                } else {
+                    line = stash;
+                    stash = null;
+                    simSteps.push({
+                        title: `Cleanup (EOF)`, desc: `No \\n found. Returning final characters. Stash becomes NULL permanently.`,
+                        file: getFile(), buffer: "Freed", stash: "NULL", line: fmt(line)
+                    });
+                }
+            }
+            callCount++;
+        }
+
+        simSteps.push({
+            title: `Final Call: get_next_line(fd)`, desc: "Stash is NULL and File is empty. Function safely returns NULL. Program Complete!",
+            file: "EMPTY (EOF)", buffer: "NULL", stash: "NULL", line: "Returned NULL"
+        });
+
+        return simSteps;
+    }
+
+    function startSimulation() {
+        // Grab raw text (preserves actual newlines)
+        const text = document.getElementById("userInput").value;
+        const bufSize = parseInt(document.getElementById("bufferSize").value);
+        
+        if (bufSize < 1 || isNaN(bufSize)) {
+            alert("BUFFER_SIZE must be at least 1.");
+            return;
+        }
+
+        steps = generateGNLSteps(text, bufSize);
+        currentStep = 0;
+        
+        document.getElementById("visualizer").style.display = "block";
+        updateUI();
+    }
+
+    // Helper to colorize \n, \t, and \0
+    function formatMemory(str) {
+        if (str === "NULL" || str === "Freed" || str.includes("EMPTY")) 
+            return `<span style="color: #666; font-style: italic;">${str}</span>`;
+            
+        return str
+            .replace(/\n/g, '<span class="spec-char">\\n</span>\n')
+            .replace(/\t/g, '<span class="spec-char">\\t</span>\t')
+            .replace(/\\0/g, '<span class="null-char">\\0</span>');
+    }
+
+    function updateUI() {
+        const step = steps[currentStep];
+        
+        document.getElementById("step-title").innerText = step.title;
+        document.getElementById("step-desc").innerText = step.desc;
+        document.getElementById("step-counter").innerText = `Step ${currentStep + 1} of ${steps.length}`;
+        
+        document.getElementById("val-file").innerHTML = formatMemory(step.file);
+        document.getElementById("val-buffer").innerHTML = formatMemory(step.buffer);
+        document.getElementById("val-stash").innerHTML = formatMemory(step.stash);
+        document.getElementById("val-line").innerHTML = formatMemory(step.line);
+
+        document.getElementById("btn-prev").disabled = currentStep === 0;
+        document.getElementById("btn-next").disabled = currentStep === steps.length - 1;
+    }
+
+    function changeStep(direction) {
+        currentStep += direction;
+        if (currentStep < 0) currentStep = 0;
+        if (currentStep >= steps.length) currentStep = steps.length - 1;
+        updateUI();
+    }
+</script>
+</body>
+</html>

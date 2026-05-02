@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*    get_next_line_utils.c                             :+:      :+:    :+:   */
+/*   get_next_line_utils.c                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: whoami <whoami@student.42.fr>              +#+  +:+       +#+        */
+/*   By: aschebly <aschebly@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/28 22:58:16 by whoami            #+#    #+#             */
-/*   Updated: 2026/04/28 23:14:50 by whoami           ###   ########.fr       */
+/*   Updated: 2026/05/02 14:07:42 by aschebly         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,3 +99,19 @@ char	*ft_strdup_modified(char *stash)
 	line[i] = '\0';	
 	return (line);
 }
+/*#include "get_next_line.h"
+
+int	main(void)
+{
+    int		fd;
+    char	*line;
+
+    fd = open("file.txt", O_RDWR);
+    if (fd == -1)
+        return (1);
+    line = get_next_line(fd);
+    printf("%s", line);
+    free(line);
+    close(fd);
+    return (0);
+}*/
